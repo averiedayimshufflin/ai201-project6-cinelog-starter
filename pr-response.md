@@ -56,23 +56,28 @@ Take the final screenshot after the `docs: add pr response for watchlist review`
 ```
 
 ## PR Description
-This PR adds a watchlist feature to CineLog so users can save films they want to watch later. It includes a UUID-based `WatchlistEntry` model, service functions for add/remove/list operations, Flask endpoints under `/watchlist`, duplicate prevention, and tests for service and route behavior.
+**Title:** Add watchlist feature
 
-Design decisions:
-- Default visibility remains public (`public=True`) because CineLog is community-oriented, but clients can now set `public=False` explicitly.
-- Watchlists are returned newest-first to match the existing collection API and prioritize recently saved intent.
+**Feature overview:** This PR adds a watchlist feature so CineLog users can save films they want to watch later without marking them as watched in their collection. It adds a UUID-based `WatchlistEntry` model, watchlist service functions, and REST endpoints for listing, adding, and removing watchlist films. The implementation prevents duplicate watchlist entries and returns clear API errors for missing films or conflicts.
 
-Manual testing:
-1. Install dependencies with `pip install -r requirements.txt`.
-2. Start the app with `python app.py`.
-3. Create or use an existing user and film UUID in the database.
-4. Add a public entry: `POST /watchlist/<user_id>/add` with `{ "film_id": "<film_uuid>" }`.
-5. Add a private entry for another film: `POST /watchlist/<user_id>/add` with `{ "film_id": "<film_uuid>", "public": false }`.
-6. Fetch the watchlist with `GET /watchlist/<user_id>` and confirm newest-first ordering plus the `public` value.
-7. Try adding the same film again and confirm the API returns 409.
-8. Remove an entry with `DELETE /watchlist/<user_id>/remove` and `{ "film_id": "<film_uuid>" }`.
+**Design decisions:** I kept watchlist visibility public by default (`public=True`) because CineLog is a community film tracking app and shared watchlists support discovery. To address the privacy tradeoff, callers can explicitly set `{ "public": false }` when adding a film. I also chose newest-first sort order for `GET /watchlist/<user_id>` because watchlists are usually driven by recent intent, and this keeps the behavior consistent with the existing collection API.
 
-Automated testing:
+**Manual testing steps:**
+1. Install dependencies: `pip install -r requirements.txt`.
+2. Start the Flask API: `python app.py`.
+3. Create or identify one test user UUID and two film UUIDs in the database.
+4. Add a public watchlist entry by sending `POST /watchlist/<user_id>/add` with body `{ "film_id": "<film_uuid>" }`.
+5. Confirm the response is `201` and includes `"public": true`.
+6. Add a private watchlist entry for a different film by sending `POST /watchlist/<user_id>/add` with body `{ "film_id": "<film_uuid>", "public": false }`.
+7. Confirm the response is `201` and includes `"public": false`.
+8. Fetch the watchlist with `GET /watchlist/<user_id>` and confirm the private entry appears before the earlier public entry because results are newest-first.
+9. Send the same add request again for an existing watchlist film and confirm the API returns `409`.
+10. Remove an entry by sending `DELETE /watchlist/<user_id>/remove` with body `{ "film_id": "<film_uuid>" }`.
+11. Fetch `GET /watchlist/<user_id>` again and confirm the removed film no longer appears.
+
+**Automated testing:**
 ```bash
 pytest tests/ -v
 ```
+
+Expected result: all collection and watchlist tests pass.
